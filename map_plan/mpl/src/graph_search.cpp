@@ -103,7 +103,17 @@ decimal_t GraphSearch<Dim>::Astar(const Coord &start_coord,
     }
 
     // If goal reached, abort!
-    if (env->is_goal(currNode_ptr->coord)) break;
+    if (env->is_goal(currNode_ptr->coord))
+    // xu: multi-traj-proposal stuff
+    // {break;}
+    {
+      ++traj_counter_;
+      if (traj_counter_ <= traj_proposals_) {
+        std::cout << traj_counter_ << "th raj found!!!"<<std::endl;
+      } else {
+        break;
+      }
+    }
 
     // If maximum expansion reached, abort!
     if (max_expand > 0 && expand_iteration >= max_expand) {

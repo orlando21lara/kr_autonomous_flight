@@ -70,5 +70,7 @@ class GraphSearch {
 
   /// Verbose flag
   bool verbose_ = false;
+  int traj_counter_{0};
+  int traj_proposals_{20};
 };
 }  // namespace MPL
