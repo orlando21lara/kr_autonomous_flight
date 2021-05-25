@@ -27,6 +27,7 @@ template <int Dim>
 void PlannerBase<Dim>::reset() {
   ss_ptr_ = nullptr;
   traj_ = TrajectoryD();
+  suboptimal_trajs_.clear();
 }
 
 template <int Dim>
@@ -168,7 +169,7 @@ bool PlannerBase<Dim>::plan(const PlannerBase::Coord &start,
   if (use_lpastar_) {
     traj_cost_ = planner.LPAstar(start, env_, ss_ptr_, traj_, max_num_);
   } else {
-    traj_cost_ = planner.Astar(start, env_, ss_ptr_, traj_, max_num_);
+    traj_cost_ = planner.Astar(start, env_, ss_ptr_, traj_, suboptimal_trajs_, suboptimal_factor_, max_suboptimal_proposals_, max_num_);
   }
 
   if (std::isinf(traj_cost_)) {

@@ -5,10 +5,11 @@
 namespace MPL {
 
 template <int Dim>
-decimal_t GraphSearch<Dim>::Astar(const Coord &start_coord,
-                                  const std::shared_ptr<EnvBaseD> &env,
-                                  std::shared_ptr<StateSpaceD> &ss_ptr,
-                                  TrajectoryD &traj, int max_expand) {
+decimal_t GraphSearch<Dim>::Astar(
+    const Coord &start_coord, const std::shared_ptr<EnvBaseD> &env,
+    std::shared_ptr<StateSpaceD> &ss_ptr, TrajectoryD &traj,
+    std::vector<TrajectoryD> &suboptimal_trajs, decimal_t suboptimal_factor,
+    int max_suboptimal_proposals, int max_expand) {
   // Check if done
   if (env->is_goal(start_coord)) return 0;
 
@@ -109,7 +110,7 @@ decimal_t GraphSearch<Dim>::Astar(const Coord &start_coord,
     {
       ++traj_counter_;
       if (traj_counter_ <= traj_proposals_) {
-        std::cout << traj_counter_ << "th raj found!!!"<<std::endl;
+        std::cout << traj_counter_ << "th raj found!!!" << std::endl;
       } else {
         break;
       }

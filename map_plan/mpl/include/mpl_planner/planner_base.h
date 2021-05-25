@@ -88,8 +88,15 @@ class PlannerBase {
   std::shared_ptr<StateSpaceD> ss_ptr_;
   /// Optimal trajectory
   TrajectoryD traj_;
-  /// Total cost of final trajectory
+  /// Total cost of optimal trajectory
   decimal_t traj_cost_;
+  // Sub-optimal trajectories
+  std::vector<TrajectoryD> suboptimal_trajs_;
+  // Sub-optimal trajectories will have cost <= suboptimal_factor_ * traj_cost_
+  decimal_t suboptimal_factor_ = 1.5;
+  // Maxmum number of sub-optimal trajectories, -1 means no limitation as long as cost is within the threshold shown above
+  int max_suboptimal_proposals_ = -1;
+
   /// Greedy searching parameter
   decimal_t epsilon_ = 1.0;
   /// Maxmum number of expansion, -1 means no limitation
