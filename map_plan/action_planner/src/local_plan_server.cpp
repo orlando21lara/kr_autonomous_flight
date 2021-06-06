@@ -1,10 +1,10 @@
 #include <action_planner/ActionPlannerConfig.h>
-#include <planning_ros_msgs/PlanTwoPointAction.h>
 #include <actionlib/server/simple_action_server.h>
 #include <eigen_conversions/eigen_msg.h>
 #include <mpl_basis/trajectory.h>
 #include <mpl_collision/map_util.h>
 #include <mpl_planner/map_planner.h>
+#include <planning_ros_msgs/PlanTwoPointAction.h>
 #include <planning_ros_utils/data_ros_utils.h>
 #include <planning_ros_utils/primitive_ros_utils.h>
 #include <ros/ros.h>
@@ -34,7 +34,17 @@ class LocalPlanServer {
  private:
   ros::NodeHandle pnh_;
   ros::Subscriber local_map_sub_;
-  ros::Publisher traj_pub;
+  ros::Publisher traj_pub_;
+  ros::Publisher traj_pub1_;
+  ros::Publisher traj_pub2_;
+  ros::Publisher traj_pub3_;
+  ros::Publisher traj_pub4_;
+  ros::Publisher traj_pub5_;
+  ros::Publisher traj_pub6_;
+  ros::Publisher traj_pub7_;
+  ros::Publisher traj_pub8_;
+  ros::Publisher traj_pub9_;
+  ros::Publisher traj_pub10_;
 
   // visualization messages pub
   ros::Publisher sg_pub;
@@ -48,6 +58,7 @@ class LocalPlanServer {
 
   // motion primitive trajectory
   MPL::Trajectory3D traj_;
+  std::vector<MPL::Trajectory3D> suboptimal_trajs_;
 
   // current local map
   planning_ros_msgs::VoxelMapConstPtr local_map_;
@@ -81,7 +92,7 @@ class LocalPlanServer {
   /**
    * @brief Record result (trajectory, status, etc)
    */
-  void process_result(const MPL::Trajectory3D &traj, bool solved);
+  void process_result(bool solved);
 
   /**
    * @brief map callback, update local_map_
@@ -104,7 +115,18 @@ void LocalPlanServer::localMapCB(
 }
 
 LocalPlanServer::LocalPlanServer(const ros::NodeHandle &nh) : pnh_(nh) {
-  traj_pub = pnh_.advertise<planning_ros_msgs::Trajectory>("traj", 1, true);
+  traj_pub_ = pnh_.advertise<planning_ros_msgs::Trajectory>("traj", 1, true);
+  traj_pub1_ = pnh_.advertise<planning_ros_msgs::Trajectory>("traj1", 1, true);
+  traj_pub2_ = pnh_.advertise<planning_ros_msgs::Trajectory>("traj2", 1, true);
+  traj_pub3_ = pnh_.advertise<planning_ros_msgs::Trajectory>("traj3", 1, true);
+  traj_pub4_ = pnh_.advertise<planning_ros_msgs::Trajectory>("traj4", 1, true);
+  traj_pub5_ = pnh_.advertise<planning_ros_msgs::Trajectory>("traj5", 1, true);
+  traj_pub6_ = pnh_.advertise<planning_ros_msgs::Trajectory>("traj6", 1, true);
+  traj_pub7_ = pnh_.advertise<planning_ros_msgs::Trajectory>("traj7", 1, true);
+  traj_pub8_ = pnh_.advertise<planning_ros_msgs::Trajectory>("traj8", 1, true);
+  traj_pub9_ = pnh_.advertise<planning_ros_msgs::Trajectory>("traj9", 1, true);
+  traj_pub10_ = pnh_.advertise<planning_ros_msgs::Trajectory>("traj10", 1, true);
+
   local_map_sub_ =
       pnh_.subscribe("local_voxel_map", 2, &LocalPlanServer::localMapCB, this);
   local_as_ = std::make_unique<
@@ -191,17 +213,58 @@ void LocalPlanServer::process_all() {
   process_goal();
 }
 
-void LocalPlanServer::process_result(const MPL::Trajectory3D &traj,
-                                     bool solved) {
+void LocalPlanServer::process_result(bool solved) {
   result_ = boost::make_shared<planning_ros_msgs::PlanTwoPointResult>();
   result_->success = solved;  // set success status
   result_->policy_status = solved ? 1 : -1;
   if (solved) {
     // covert traj to a ros message
-    planning_ros_msgs::Trajectory traj_msg = toTrajectoryROSMsg(traj);
-    traj_msg.header.frame_id = local_map_->header.frame_id;
-    traj_pub.publish(traj_msg);
+    planning_ros_msgs::Trajectory traj_msg;
+    int counter = 0;
+    for (const auto &cur_traj : suboptimal_trajs_) {
+      ++counter;
+      traj_msg = toTrajectoryROSMsg(cur_traj);
+      traj_msg.header.frame_id = local_map_->header.frame_id;
+      switch (counter)
+      {
+      case 1:
+        traj_pub1_.publish(traj_msg);
+        break;
+      case 2:
+        traj_pub2_.publish(traj_msg);
+        break;
+      case 3:
+        traj_pub3_.publish(traj_msg);
+        break;
+      case 4:
+        traj_pub4_.publish(traj_msg);
+        break; 
+      case 5:
+        traj_pub5_.publish(traj_msg);
+        break; 
+      case 6:
+        traj_pub6_.publish(traj_msg);
+        break; 
+      case 7:
+        traj_pub7_.publish(traj_msg);
+        break; 
+      case 8:
+        traj_pub8_.publish(traj_msg);
+        break; 
+      case 9:
+        traj_pub9_.publish(traj_msg);
+        break; 
+      case 10:
+        traj_pub10_.publish(traj_msg);
+        break;           
+      default:
+        break;
+      }
+    }
 
+    traj_msg = toTrajectoryROSMsg(traj_);
+    traj_msg.header.frame_id = local_map_->header.frame_id;
+    traj_pub_.publish(traj_msg);
     // record trajectory in result
     result_->traj = traj_opt::SplineTrajectoryFromTrajectory(traj_msg);
     result_->traj.header.frame_id = local_map_->header.frame_id;
@@ -218,7 +281,7 @@ void LocalPlanServer::process_result(const MPL::Trajectory3D &traj,
     // TODO(xu): why 5? should be >= max_horizon in replanner?
     int num_goals = 5;
     if (endt <= 0) {
-      endt = traj.getTotalTime();
+      endt = traj_.getTotalTime();
       num_goals = 1;
     }
 
@@ -226,7 +289,7 @@ void LocalPlanServer::process_result(const MPL::Trajectory3D &traj,
       geometry_msgs::Pose p_fin;
       geometry_msgs::Twist v_fin, a_fin, j_fin;
 
-      MPL::Waypoint3D pt_f = traj.evaluate(endt * double(i + 1));
+      MPL::Waypoint3D pt_f = traj_.evaluate(endt * double(i + 1));
       // check if evaluation is successful, if not, set result->success to be
       // false! (if failure case, a null Waypoint is returned)
       if ((pt_f.pos(0) == 0) && (pt_f.pos(1) == 0) && (pt_f.pos(2) == 0) &&
@@ -234,7 +297,7 @@ void LocalPlanServer::process_result(const MPL::Trajectory3D &traj,
         result_->success = 0;
         ROS_WARN_STREAM(
             "waypoint evaluation failed, set result->success to be false");
-        ROS_WARN_STREAM("trajectory total time:" << traj.total_t_);
+        ROS_WARN_STREAM("trajectory total time:" << traj_.total_t_);
         ROS_WARN_STREAM("evaluating at:" << endt * double(i + 1));
       }
 
@@ -256,7 +319,7 @@ void LocalPlanServer::process_result(const MPL::Trajectory3D &traj,
         goal_->execution_time;  // execution_time (set in replanner)
                                 // equals 1.0/replan_rate
     result_->epoch = goal_->epoch;
-    MPL::Waypoint3D pt = traj.evaluate(traj.getTotalTime());
+    MPL::Waypoint3D pt = traj_.evaluate(traj_.getTotalTime());
     result_->traj_end.position.x = pt.pos(0);
     result_->traj_end.position.y = pt.pos(1);
     result_->traj_end.position.z = pt.pos(2);
@@ -323,8 +386,7 @@ void LocalPlanServer::process_goal() {
   }
 
   // get the trajectory from local planner, and process result
-  MPL::Trajectory3D traj = traj_;
-  process_result(traj, local_planner_succeeded);
+  process_result(local_planner_succeeded);
 }
 
 bool LocalPlanServer::local_plan_process(
@@ -349,6 +411,7 @@ bool LocalPlanServer::local_plan_process(
   valid = mp_planner_util_->plan(start, goal);
   if (valid) {
     traj_ = mp_planner_util_->getTraj();
+    suboptimal_trajs_ = mp_planner_util_->getSuboptimalTrajs();
   }
 
   // for visualization: publish expanded nodes as a point cloud

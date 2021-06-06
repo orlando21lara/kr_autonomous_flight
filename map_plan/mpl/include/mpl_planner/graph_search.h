@@ -44,6 +44,8 @@ class GraphSearch {
   decimal_t Astar(const Coord &start_coord,
                   const std::shared_ptr<EnvBaseD> &env,
                   std::shared_ptr<StateSpaceD> &ss_ptr, TrajectoryD &traj,
+                  std::vector<TrajectoryD> &suboptimal_trajs,
+                  decimal_t suboptimal_factor, int max_suboptimal_proposals,
                   int max_expand = -1);
 
   /**
@@ -71,6 +73,5 @@ class GraphSearch {
   /// Verbose flag
   bool verbose_ = false;
   int traj_counter_{0};
-  int traj_proposals_{20};
 };
 }  // namespace MPL

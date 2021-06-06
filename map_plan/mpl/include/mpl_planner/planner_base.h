@@ -25,6 +25,8 @@ class PlannerBase {
 
   /// Get optimal trajectory
   TrajectoryD getTraj() const { return traj_; }
+  std::vector<TrajectoryD> getSuboptimalTrajs() const { return suboptimal_trajs_; }
+
   /// Get points in open set
   vec_Vecf<Dim> getOpenSet() const;
   /// Get points in close set
@@ -95,7 +97,7 @@ class PlannerBase {
   // Sub-optimal trajectories will have cost <= suboptimal_factor_ * traj_cost_
   decimal_t suboptimal_factor_ = 1.5;
   // Maxmum number of sub-optimal trajectories, -1 means no limitation as long as cost is within the threshold shown above
-  int max_suboptimal_proposals_ = -1;
+  int max_suboptimal_proposals_ = 20;
 
   /// Greedy searching parameter
   decimal_t epsilon_ = 1.0;

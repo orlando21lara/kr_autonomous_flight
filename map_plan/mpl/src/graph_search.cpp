@@ -108,12 +108,17 @@ decimal_t GraphSearch<Dim>::Astar(
     // xu: multi-traj-proposal stuff
     // {break;}
     {
+      TrajectoryD cur_traj;
+      bool recovered = recoverTraj(currNode_ptr, ss_ptr, env, start_coord, cur_traj);
+      suboptimal_trajs.push_back(cur_traj);
+
       ++traj_counter_;
-      if (traj_counter_ <= traj_proposals_) {
-        std::cout << traj_counter_ << "th raj found!!!" << std::endl;
-      } else {
+      // check if max_suboptimal_proposals reached
+      if (max_suboptimal_proposals > 0 && traj_counter_ > max_suboptimal_proposals){
         break;
-      }
+      }else {
+        std::cout << traj_counter_ << "th raj found!!!" << std::endl;
+      } 
     }
 
     // If maximum expansion reached, abort!
