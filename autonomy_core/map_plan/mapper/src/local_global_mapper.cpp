@@ -1,9 +1,10 @@
 #include "mapper/local_global_mapper.h"
 
-LocalGlobalMapperNode::LocalGlobalMapperNode(const ros::NodeHandle& nh) : nh_(nh) {
+LocalGlobalMapperNode::LocalGlobalMapperNode(ros::NodeHandle& nh) : nh_(nh) {
   initParams_();
 
-  cloud_sub = nh_.subscribe(cloud_name_, 1, &LocalGlobalMapperNode::cloudCallback_, this);
+  cloud_sub = nh_.subscribe(
+      cloud_name_, 1, &LocalGlobalMapperNode::cloudCallback_, this);
 
   global_map_pub =
       nh_.advertise<planning_ros_msgs::VoxelMap>("global_voxel_map", 1, true);
@@ -15,32 +16,32 @@ LocalGlobalMapperNode::LocalGlobalMapperNode(const ros::NodeHandle& nh) : nh_(nh
   time_pub = nh_.advertise<sensor_msgs::Temperature>("/timing/mapper", 1);
 
   // storage map should have same resolution and z_dim as local map
-  storage_map_info_.resolution = local_map_info_.resolution;
-  local_map_info_.dim.z =
-      (int)ceil((local_map_dim_d_z_) / storage_map_info_.resolution);
-  storage_map_info_.dim.z = local_map_info_.dim.z;
+  storage_map_ros_.resolution = local_map_ros_.resolution;
+  local_map_ros_.dim.z =
+      (int)ceil((local_map_dim_d_z_) / storage_map_ros_.resolution);
+  storage_map_ros_.dim.z = local_map_ros_.dim.z;
 
   // storage map should have same x y z center and x_dim y_dim as global map
-  storage_map_info_.origin.x = global_map_info_.origin.x;
-  storage_map_info_.origin.y = global_map_info_.origin.y;
-  storage_map_info_.origin.z = global_map_info_.origin.z;
-  storage_map_info_.dim.x =
-      (int)ceil((global_map_dim_d_x_) / storage_map_info_.resolution);
-  storage_map_info_.dim.y =
-      (int)ceil((global_map_dim_d_y_) / storage_map_info_.resolution);
+  storage_map_ros_.origin.x = global_map_ros_.origin.x;
+  storage_map_ros_.origin.y = global_map_ros_.origin.y;
+  storage_map_ros_.origin.z = global_map_ros_.origin.z;
+  storage_map_ros_.dim.x =
+      (int)ceil((global_map_dim_d_x_) / storage_map_ros_.resolution);
+  storage_map_ros_.dim.y =
+      (int)ceil((global_map_dim_d_y_) / storage_map_ros_.resolution);
 
-  local_map_info_.dim.x =
-      (int)ceil((local_map_dim_d_x_) / local_map_info_.resolution);
-  local_map_info_.dim.y =
-      (int)ceil((local_map_dim_d_y_) / local_map_info_.resolution);
+  local_map_ros_.dim.x =
+      (int)ceil((local_map_dim_d_x_) / local_map_ros_.resolution);
+  local_map_ros_.dim.y =
+      (int)ceil((local_map_dim_d_y_) / local_map_ros_.resolution);
 
   // local map range z and center_z will be the same as storage map
-  local_map_info_.origin.z = storage_map_info_.origin.z;
+  local_map_ros_.origin.z = storage_map_ros_.origin.z;
 
   const Eigen::Vector3d local_dim_d(
-      local_map_info_.dim.x * local_map_info_.resolution,
-      local_map_info_.dim.y * local_map_info_.resolution,
-      local_map_info_.dim.z * local_map_info_.resolution);
+      local_map_ros_.dim.x * local_map_ros_.resolution,
+      local_map_ros_.dim.y * local_map_ros_.resolution,
+      local_map_ros_.dim.z * local_map_ros_.resolution);
 
   // origin is the left lower corner of the voxel map, therefore, adding
   // this offset make the map centered around the given position
@@ -52,11 +53,9 @@ LocalGlobalMapperNode::LocalGlobalMapperNode(const ros::NodeHandle& nh) : nh_(nh
   localInflaInit_();
 
   timer.stop();
-
 }
 
 void LocalGlobalMapperNode::initParams_() {
-
   nh_.param("map_frame", map_frame_, std::string("map"));
   nh_.param("odom_frame", odom_frame_, std::string("odom"));
   nh_.param("lidar_frame", lidar_frame_, std::string("lidar"));
@@ -68,7 +67,7 @@ void LocalGlobalMapperNode::initParams_() {
   nh_.param("robot_h", robot_h_, 0.0);
 
   double global_map_cx, global_map_cy, global_map_cz;
-  nh_.param("global/resolution", global_map_info_.resolution, 2.0f);
+  nh_.param("global/resolution", global_map_ros_.resolution, 2.0f);
   nh_.param("global/center_x", global_map_cx, 0.0);
   nh_.param("global/center_y", global_map_cy, 0.0);
   nh_.param("global/center_z", global_map_cz, 0.0);
@@ -85,42 +84,44 @@ void LocalGlobalMapperNode::initParams_() {
 
   // map origin is the left lower corner of the voxel map, therefore, adding
   // an offset make the map centered around the given position
-  global_map_info_.origin.x = global_map_cx - global_map_dim_d_x_ / 2;
-  global_map_info_.origin.y = global_map_cy - global_map_dim_d_y_ / 2;
-  global_map_info_.origin.z = global_map_cz - global_map_dim_d_z_ / 2;
-  global_map_info_.dim.x =
-      (int)ceil((global_map_dim_d_x_) / global_map_info_.resolution);
-  global_map_info_.dim.y =
-      (int)ceil((global_map_dim_d_y_) / global_map_info_.resolution);
-  global_map_info_.dim.z =
-      (int)ceil((global_map_dim_d_z_) / global_map_info_.resolution);
+  global_map_ros_.origin.x = global_map_cx - global_map_dim_d_x_ / 2;
+  global_map_ros_.origin.y = global_map_cy - global_map_dim_d_y_ / 2;
+  global_map_ros_.origin.z = global_map_cz - global_map_dim_d_z_ / 2;
+  global_map_ros_.dim.x =
+      (int)ceil((global_map_dim_d_x_) / global_map_ros_.resolution);
+  global_map_ros_.dim.y =
+      (int)ceil((global_map_dim_d_y_) / global_map_ros_.resolution);
+  global_map_ros_.dim.z =
+      (int)ceil((global_map_dim_d_z_) / global_map_ros_.resolution);
 
-  nh_.param("local/resolution", local_map_info_.resolution, 0.25f);
+  nh_.param("local/resolution", local_map_ros_.resolution, 0.25f);
   nh_.param("local/range_x", local_map_dim_d_x_, 20.0);
   nh_.param("local/range_y", local_map_dim_d_y_, 20.0);
   nh_.param("local/range_z", local_map_dim_d_z_, 10.0);
   nh_.param("local/max_raycast_range", local_max_raycast_, 20.0);
   nh_.param("local/decay_times_to_empty", local_decay_times_to_empty_, 0);
-
 }
 
 void LocalGlobalMapperNode::globalMapInit_() {
   // TODO(xu): combine two parts into one.
   ROS_WARN("[Mapper]: get 3D map info!");
   // part1: global
-  const Eigen::Vector3d global_origin(global_map_info_.origin.x,
-                                      global_map_info_.origin.y,
-                                      global_map_info_.origin.z);
+  const Eigen::Vector3d global_origin(global_map_ros_.origin.x,
+                                      global_map_ros_.origin.y,
+                                      global_map_ros_.origin.z);
   const Eigen::Vector3d global_dim_d(
-      global_map_info_.dim.x * global_map_info_.resolution,
-      global_map_info_.dim.y * global_map_info_.resolution,
-      global_map_info_.dim.z * global_map_info_.resolution);
-  const double global_res = global_map_info_.resolution;
+      global_map_ros_.dim.x * global_map_ros_.resolution,
+      global_map_ros_.dim.y * global_map_ros_.resolution,
+      global_map_ros_.dim.z * global_map_ros_.resolution);
+  const double global_res = global_map_ros_.resolution;
   int8_t global_val_default = 0;
   // Initialize the mapper
-  global_voxel_mapper_.reset(new mapper::VoxelMapper(
-      global_origin, global_dim_d, global_res, global_val_default,
-      global_decay_times_to_empty_));
+  global_voxel_mapper_.reset(
+      new mapper::VoxelMapper(global_origin,
+                              global_dim_d,
+                              global_res,
+                              global_val_default,
+                              global_decay_times_to_empty_));
 
   // build the array for map inflation
   global_infla_array_.clear();
@@ -145,23 +146,26 @@ void LocalGlobalMapperNode::globalMapInit_() {
 }
 
 void LocalGlobalMapperNode::storageMapInit_() {
-  const Eigen::Vector3d storage_origin(storage_map_info_.origin.x,
-                                       storage_map_info_.origin.y,
-                                       storage_map_info_.origin.z);
+  const Eigen::Vector3d storage_origin(storage_map_ros_.origin.x,
+                                       storage_map_ros_.origin.y,
+                                       storage_map_ros_.origin.z);
   const Eigen::Vector3d storage_dim_d(
-      storage_map_info_.dim.x * storage_map_info_.resolution,
-      storage_map_info_.dim.y * storage_map_info_.resolution,
-      storage_map_info_.dim.z * storage_map_info_.resolution);
-  const double res = storage_map_info_.resolution;
+      storage_map_ros_.dim.x * storage_map_ros_.resolution,
+      storage_map_ros_.dim.y * storage_map_ros_.resolution,
+      storage_map_ros_.dim.z * storage_map_ros_.resolution);
+  const double res = storage_map_ros_.resolution;
   int8_t storage_val_default = 0;
   // Initialize the mapper
-  storage_voxel_mapper_.reset(new mapper::VoxelMapper(
-      storage_origin, storage_dim_d, res, storage_val_default,
-      local_decay_times_to_empty_));
+  storage_voxel_mapper_.reset(
+      new mapper::VoxelMapper(storage_origin,
+                              storage_dim_d,
+                              res,
+                              storage_val_default,
+                              local_decay_times_to_empty_));
 }
 
 void LocalGlobalMapperNode::localInflaInit_() {
-  const double res = storage_map_info_.resolution;
+  const double res = storage_map_ros_.resolution;
   local_infla_array_.clear();
   int rn = std::ceil(robot_r_ / res);
   int hn = std::ceil(robot_h_ / res);
@@ -176,14 +180,64 @@ void LocalGlobalMapperNode::localInflaInit_() {
   }
 }
 
-void LocalGlobalMapperNode::cropLocalMap_(const Eigen::Vector3d &center_position_map,
-                  const Eigen::Vector3d &center_position_odom) {
+void LocalGlobalMapperNode::makeInflatedMap(
+    const std::unique_ptr<mapper::VoxelMapper>& map,
+    planning_ros_msgs::VoxelMap& voxel_map) {
+  const auto origin = map->getOrigin();
+  voxel_map.origin.x = origin(0);
+  voxel_map.origin.y = origin(1);
+  voxel_map.origin.z = origin(2);
+  auto dim = map->getDim();
+
+  voxel_map.dim.x = dim(0);
+  voxel_map.dim.y = dim(1);
+  voxel_map.dim.z = dim(2);
+
+  voxel_map.resolution = map->getResolution();
+
+  voxel_map.data.resize(dim(0) * dim(1) * dim(2), map->getDefaultVal());
+  auto mapDataPtr = map->getInflatedMapData();
+  std::copy(&mapDataPtr[0],
+            &mapDataPtr[voxel_map.data.size() - 1],
+            std::back_inserter(voxel_map.data));
+  // return voxel_map;
+}
+
+// planning_ros_msgs::VoxelMap LocalGlobalMapperNode::makeLocalInflatedMap(
+//     mapper::VoxelMapper& map,
+//     const Eigen::Vector3d& ori_d,
+//     const Eigen::Vector3d& dim_d) {
+//   planning_ros_msgs::VoxelMap voxel_map;
+//   voxel_map.origin.x = ori_d(0);
+//   voxel_map.origin.y = ori_d(1);
+//   voxel_map.origin.z = ori_d(2);
+
+//   const Eigen::Vector3i dim(dim_d(0) / map.getResolution(),
+//                             dim_d(1) / map.getResolution(),
+//                             dim_d(2) / map.getResolution());
+//   voxel_map.dim.x = dim(0);
+//   voxel_map.dim.y = dim(1);
+//   voxel_map.dim.z = dim(2);
+
+//   voxel_map.resolution = map.getResolution();
+//   voxel_map.data.resize(dim(0) * dim(1) * dim(2), map.getDefaultVal());
+
+//   // auto mapDataPtr = map.getInflatedSubMapData(dim);
+//   auto mapView = map.getInflatedMapView(dim);
+
+//   std::copy(mapView.begin(), mapView.end(),
+//   std::back_inserter(voxel_map.data)); return voxel_map;
+// }
+
+void LocalGlobalMapperNode::cropLocalMap_(
+    const Eigen::Vector3d& center_position_map,
+    const Eigen::Vector3d& center_position_odom) {
   const Eigen::Vector3d local_dim_d(
-      local_map_info_.dim.x * local_map_info_.resolution,
-      local_map_info_.dim.y * local_map_info_.resolution,
-      local_map_info_.dim.z * local_map_info_.resolution);
+      local_map_ros_.dim.x * local_map_ros_.resolution,
+      local_map_ros_.dim.y * local_map_ros_.resolution,
+      local_map_ros_.dim.z * local_map_ros_.resolution);
   Eigen::Vector3d local_origin_map = center_position_map + local_ori_offset_;
-  local_origin_map(2) = storage_map_info_.origin.z;
+  local_origin_map(2) = storage_map_ros_.origin.z;
 
   // core function: crop local map from the storage map
   planning_ros_msgs::VoxelMap local_voxel_map =
@@ -192,7 +246,7 @@ void LocalGlobalMapperNode::cropLocalMap_(const Eigen::Vector3d &center_position
   // Transform local map by moving its origin. This is because we want the
   // cropped map to be centered around lidar's position wrt odom frame
   Eigen::Vector3d local_origin_odom = center_position_odom + local_ori_offset_;
-  local_origin_odom(2) = storage_map_info_.origin.z;
+  local_origin_odom(2) = storage_map_ros_.origin.z;
   local_voxel_map.origin.x = local_origin_odom(0);
   local_voxel_map.origin.y = local_origin_odom(1);
   local_voxel_map.origin.z = local_origin_odom(2);
@@ -204,23 +258,27 @@ void LocalGlobalMapperNode::cropLocalMap_(const Eigen::Vector3d &center_position
   local_map_pub.publish(local_voxel_map);
 }
 
-void LocalGlobalMapperNode::getLidarPoses_(const std_msgs::Header& cloud_header,
-    geometry_msgs::Pose& pose_map_lidar, geometry_msgs::Pose& pose_odom_lidar) {
-
+void LocalGlobalMapperNode::getLidarPoses_(
+    const std_msgs::Header& cloud_header,
+    geometry_msgs::Pose& pose_map_lidar,
+    geometry_msgs::Pose& pose_odom_lidar) {
   // get the transform from fixed frame to lidar frame
   static mapper::TFListener tf_listener;
   if (real_robot_) {
     // for real robot, the point cloud frame_id may not exist in the tf tree,
     // manually defining it here.
     // TODO(xu): make this automatic
-    auto tf_map_lidar = tf_listener.LookupTransform(map_frame_, lidar_frame_,
-                                                    cloud_header.stamp);
-    auto tf_odom_lidar = tf_listener.LookupTransform(odom_frame_, lidar_frame_,
-                                                     cloud_header.stamp);
+    auto tf_map_lidar = tf_listener.LookupTransform(
+        map_frame_, lidar_frame_, cloud_header.stamp);
+    auto tf_odom_lidar = tf_listener.LookupTransform(
+        odom_frame_, lidar_frame_, cloud_header.stamp);
     if ((!tf_map_lidar) || (!tf_odom_lidar)) {
       ROS_WARN(
-          "[Mapper real-robot:] Failed to get transform (either from %s to %s; or from %s to %s)",
-          lidar_frame_.c_str(), map_frame_.c_str(), lidar_frame_.c_str(),
+          "[Mapper real-robot:] Failed to get transform (either from %s to %s; "
+          "or from %s to %s)",
+          lidar_frame_.c_str(),
+          map_frame_.c_str(),
+          lidar_frame_.c_str(),
           odom_frame_.c_str());
       return;
     }
@@ -232,12 +290,18 @@ void LocalGlobalMapperNode::getLidarPoses_(const std_msgs::Header& cloud_header,
     auto tf_odom_lidar = tf_listener.LookupTransform(
         odom_frame_, cloud_header.frame_id, cloud_header.stamp);
     if (!tf_map_lidar) {
-      ROS_WARN("[Mapper simulation:] Failed to get transform map to lidar (from %s to %s)",
-               cloud_header.frame_id.c_str(), map_frame_.c_str());
+      ROS_WARN(
+          "[Mapper simulation:] Failed to get transform map to lidar (from %s "
+          "to %s)",
+          cloud_header.frame_id.c_str(),
+          map_frame_.c_str());
       return;
     } else if (!tf_odom_lidar) {
-      ROS_WARN("[Mapper simulation:] Failed to get transform odom to lidar (from %s to %s)",
-               cloud_header.frame_id.c_str(), odom_frame_.c_str());
+      ROS_WARN(
+          "[Mapper simulation:] Failed to get transform odom to lidar (from %s "
+          "to %s)",
+          cloud_header.frame_id.c_str(),
+          odom_frame_.c_str());
       return;
     }
     pose_map_lidar = *tf_map_lidar;
@@ -245,7 +309,8 @@ void LocalGlobalMapperNode::getLidarPoses_(const std_msgs::Header& cloud_header,
   }
 }
 
-void LocalGlobalMapperNode::processCloud_(const sensor_msgs::PointCloud &cloud) {
+void LocalGlobalMapperNode::processCloud_(
+    const sensor_msgs::PointCloud& cloud) {
   if ((storage_voxel_mapper_ == nullptr) || (global_voxel_mapper_ == nullptr)) {
     ROS_WARN("voxel mapper not initialized!");
     return;
@@ -280,20 +345,17 @@ void LocalGlobalMapperNode::processCloud_(const sensor_msgs::PointCloud &cloud) 
 
   timer.start();
   // local raytracing using lidar position in the map frame (not odom frame)
-  storage_voxel_mapper_->addCloud(pts, T_map_lidar, local_infla_array_, false,
-                                  local_max_raycast_);
+  storage_voxel_mapper_->addCloud(
+      pts, T_map_lidar, local_infla_array_, false, local_max_raycast_);
   ROS_DEBUG("[storage map addCloud]: %f",
             static_cast<double>(timer.elapsed().wall) / 1e6);
 
-
   // get and publish storage map (this is very slow)
-  if(pub_storage_map_){
-    planning_ros_msgs::VoxelMap storage_map =
-        storage_voxel_mapper_->getInflatedMap();
-    storage_map.header.frame_id = map_frame_;
-    storage_map_pub.publish(storage_map);
+  if (pub_storage_map_) {
+    makeInflatedMap(storage_voxel_mapper_, storage_map_ros_);
+    storage_map_ros_.header.frame_id = map_frame_;
+    storage_map_pub.publish(storage_map_ros_);
   }
-
 
   timer.start();
   // crop local voxel map
@@ -306,8 +368,8 @@ void LocalGlobalMapperNode::processCloud_(const sensor_msgs::PointCloud &cloud) 
   ++counter_;
   if (counter_ % update_interval_ == 0) {
     timer.start();
-    global_voxel_mapper_->addCloud(pts, T_map_lidar, global_infla_array_, false,
-                                   global_max_raycast_);
+    global_voxel_mapper_->addCloud(
+        pts, T_map_lidar, global_infla_array_, false, global_max_raycast_);
     ROS_DEBUG("[global map addCloud]: %f",
               static_cast<double>(timer.elapsed().wall) / 1e6);
     timer.start();
@@ -323,24 +385,24 @@ void LocalGlobalMapperNode::processCloud_(const sensor_msgs::PointCloud &cloud) 
               static_cast<double>(timer.elapsed().wall) / 1e6);
 
     counter_ = 0;
-    planning_ros_msgs::VoxelMap global_map =
-        global_voxel_mapper_->getInflatedMap();
-    global_map.header.frame_id = map_frame_;
-    global_map_pub.publish(global_map);
+    makeInflatedMap(global_voxel_mapper_, global_map_ros_);
+    global_map_ros_.header.frame_id = map_frame_;
+    global_map_pub.publish(global_map_ros_);
   }
 
-  ROS_DEBUG_THROTTLE(1, "[Mapper]: Got cloud, number of points: [%zu]",
-                     cloud.points.size());
+  ROS_DEBUG_THROTTLE(
+      1, "[Mapper]: Got cloud, number of points: [%zu]", cloud.points.size());
 }
 
-void LocalGlobalMapperNode::cloudCallback_(const sensor_msgs::PointCloud2::ConstPtr &msg) {
+void LocalGlobalMapperNode::cloudCallback_(
+    const sensor_msgs::PointCloud2::ConstPtr& msg) {
   ROS_WARN_ONCE("[Mapper]: got the point cloud!");
   sensor_msgs::PointCloud cloud;
   sensor_msgs::convertPointCloud2ToPointCloud(*msg, cloud);
   processCloud_(cloud);
 }
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
   ros::init(argc, argv, "cloud_to_map");
   ros::NodeHandle nh("~");
 

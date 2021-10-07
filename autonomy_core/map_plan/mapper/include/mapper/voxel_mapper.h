@@ -12,6 +12,8 @@ using AlignedVector = std::vector<T, Eigen::aligned_allocator<T>>;
 
 using vec_Vec3d = AlignedVector<Eigen::Vector3d>;
 using vec_Vec3i = AlignedVector<Eigen::Vector3i>;
+typedef boost::multi_array_types::index_range range;
+typedef boost::multi_array<int8_t, 3>::array_view<3>::type array_view;
 
 class VoxelMapper {
  public:
@@ -24,8 +26,11 @@ class VoxelMapper {
    * @param decay_times_to_empty number of times of decay for an occupied voxel
    * to be decayed into empty cell, 0 means no decay
    */
-  VoxelMapper(const Eigen::Vector3d& origin, const Eigen::Vector3d& dim,
-              double res, int8_t val = 0, int decay_times_to_empty = 0);
+  VoxelMapper(const Eigen::Vector3d& origin,
+              const Eigen::Vector3d& dim,
+              double res,
+              int8_t val = 0,
+              int decay_times_to_empty = 0);
 
   /// Set all voxels as unknown
   void setMapUnknown();
@@ -36,6 +41,20 @@ class VoxelMapper {
   vec_Vec3d getCloud();
   /// Get the inflated occupied voxels
   vec_Vec3d getInflatedCloud();
+
+  Eigen::Vector3i getDiscretizedOrigin() const;
+
+  Eigen::Vector3d getOrigin() const;
+
+  Eigen::Vector3i getDim() const;
+
+  double getResolution() const;
+
+  int8_t getDefaultVal() const;
+
+  const int8_t* getInflatedMapData() const;
+
+  array_view getInflatedMapView(const Eigen::Vector3i& dims);
 
   /**
    * @brief Get the occupied voxels within a local range
@@ -100,8 +119,10 @@ class VoxelMapper {
    *
    * return the new added occupied cells
    */
-  void addCloud(const vec_Vec3d& pts, const Eigen::Affine3d& TF,
-                const vec_Vec3i& ns, bool ray_trace = false,
+  void addCloud(const vec_Vec3d& pts,
+                const Eigen::Affine3d& TF,
+                const vec_Vec3i& ns,
+                bool ray_trace = false,
                 double max_range = 10);
 
   /**
@@ -115,8 +136,12 @@ class VoxelMapper {
    *
    * return the new added occupied cells
    */
-  void addCloud2D(const vec_Vec3d& pts, const Eigen::Affine3d& TF,
-                  const vec_Vec3i& ns, bool ray_trace, double uh, double lh,
+  void addCloud2D(const vec_Vec3d& pts,
+                  const Eigen::Affine3d& TF,
+                  const vec_Vec3i& ns,
+                  bool ray_trace,
+                  double uh,
+                  double lh,
                   double max_range);
 
   /// Free voxels

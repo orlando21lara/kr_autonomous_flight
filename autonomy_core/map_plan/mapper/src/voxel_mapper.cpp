@@ -2,8 +2,10 @@
 
 namespace mapper {
 
-VoxelMapper::VoxelMapper(const Eigen::Vector3d &origin,
-                         const Eigen::Vector3d &dim, double res, int8_t val,
+VoxelMapper::VoxelMapper(const Eigen::Vector3d& origin,
+                         const Eigen::Vector3d& dim,
+                         double res,
+                         int8_t val,
                          int decay_times_to_empty) {
   origin_ = Eigen::Vector3i::Zero();
   origin_d_ = Eigen::Vector3d::Zero();
@@ -15,27 +17,62 @@ VoxelMapper::VoxelMapper(const Eigen::Vector3d &origin,
   decay_times_to_empty = decay_times_to_empty;
   allocate(dim, origin);
   if (decay_times_to_empty >= 1) {
-    val_decay = std::ceil((float)(val_occ - val_even) / (float)decay_times_to_empty);
+    val_decay =
+        std::ceil((float)(val_occ - val_even) / (float)decay_times_to_empty);
   } else {
     val_decay = 0;  // no decay
   }
+}
+
+// GETTERS
+Eigen::Vector3i VoxelMapper::getDiscretizedOrigin() const { return origin_; }
+
+Eigen::Vector3d VoxelMapper::getOrigin() const { return origin_d_; }
+
+Eigen::Vector3i VoxelMapper::getDim() const { return dim_; }
+
+double VoxelMapper::getResolution() const { return res_; }
+
+// int8_t getFreeVal() {
+//   return val_free;
+// }
+
+// int8_t getOccVal() {
+//   return val_occ;
+// }
+
+int8_t VoxelMapper::getDefaultVal() const { return val_default; }
+
+// int8_t getEvenVal() {
+//   return val_even;
+// }
+
+const int8_t* VoxelMapper::getInflatedMapData() const {
+  return inflated_map_.data();
+}
+
+array_view VoxelMapper::getInflatedMapView(const Eigen::Vector3i& dims) {
+  return inflated_map_[boost::indices[range(0, dims(0))][range(0, dims(1))]
+                                     [range(0, dims(2))]];
 }
 
 void VoxelMapper::setMapUnknown() {
   val_default = val_unknown;
   std::fill(map_.data(), map_.data() + map_.num_elements(), val_unknown);
   std::fill(inflated_map_.data(),
-            inflated_map_.data() + inflated_map_.num_elements(), val_unknown);
+            inflated_map_.data() + inflated_map_.num_elements(),
+            val_unknown);
 }
 
 void VoxelMapper::setMapFree() {
   val_default = val_free;
   std::fill(map_.data(), map_.data() + map_.num_elements(), val_free);
   std::fill(inflated_map_.data(),
-            inflated_map_.data() + inflated_map_.num_elements(), val_free);
+            inflated_map_.data() + inflated_map_.num_elements(),
+            val_free);
 }
 
-void VoxelMapper::freeVoxels(const Eigen::Vector3d &pt, const vec_Vec3i &ns) {
+void VoxelMapper::freeVoxels(const Eigen::Vector3d& pt, const vec_Vec3i& ns) {
   const Eigen::Vector3i pn = floatToInt(pt);
 
   if (!isOutSide(pn) && map_[pn(0)][pn(1)][pn(2)] != val_free) {
@@ -44,7 +81,7 @@ void VoxelMapper::freeVoxels(const Eigen::Vector3d &pt, const vec_Vec3i &ns) {
       inflated_map_[pn(0)][pn(1)][pn(2)] = val_free;
   }
 
-  for (const auto &n : ns) {
+  for (const auto& n : ns) {
     Eigen::Vector3i pnn = pn + n;
     if (!isOutSide(pnn) && map_[pnn(0)][pnn(1)][pnn(2)] != val_free) {
       map_[pnn(0)][pnn(1)][pnn(2)] = val_free;
@@ -68,23 +105,23 @@ vec_Vec3d VoxelMapper::getCloud() {
 }
 
 // GUI: NOT USED
-vec_Vec3d VoxelMapper::getInflatedCloud() {
-  vec_Vec3d pts;
-  Eigen::Vector3i n;
-  for (n(0) = 0; n(0) < dim_(0); n(0)++) {
-    for (n(1) = 0; n(1) < dim_(1); n(1)++) {
-      for (n(2) = 0; n(2) < dim_(2); n(2)++) {
-        if (inflated_map_[n(0)][n(1)][n(2)] > val_even)
-          pts.push_back(intToFloat(n));
-      }
-    }
-  }
-  return pts;
-}
+// vec_Vec3d VoxelMapper::getInflatedCloud() {
+//   vec_Vec3d pts;
+//   Eigen::Vector3i n;
+//   for (n(0) = 0; n(0) < dim_(0); n(0)++) {
+//     for (n(1) = 0; n(1) < dim_(1); n(1)++) {
+//       for (n(2) = 0; n(2) < dim_(2); n(2)++) {
+//         if (inflated_map_[n(0)][n(1)][n(2)] > val_even)
+//           pts.push_back(intToFloat(n));
+//       }
+//     }
+//   }
+//   return pts;
+// }
 
-vec_Vec3d VoxelMapper::getLocalCloud(const Eigen::Vector3d &pos,
-                                     const Eigen::Vector3d &ori,
-                                     const Eigen::Vector3d &dim) {
+vec_Vec3d VoxelMapper::getLocalCloud(const Eigen::Vector3d& pos,
+                                     const Eigen::Vector3d& ori,
+                                     const Eigen::Vector3d& dim) {
   Eigen::Vector3i dim_low, dim_up;
 
   Eigen::Vector3i dim1 = floatToInt(pos + ori);
@@ -105,7 +142,7 @@ vec_Vec3d VoxelMapper::getLocalCloud(const Eigen::Vector3d &pos,
   return pts;
 }
 
-void VoxelMapper::decayLocalCloud(const Eigen::Vector3d &pos,
+void VoxelMapper::decayLocalCloud(const Eigen::Vector3d& pos,
                                   double max_decay_range) {
   Eigen::Vector3i dim_low, dim_up;
   Eigen::Vector3d start_pos;
@@ -143,9 +180,9 @@ void VoxelMapper::decayLocalCloud(const Eigen::Vector3d &pos,
 
 // crop a local voxel map from the global voxel map (local voxel map is a subset
 // of global voxel map)
-vec_Vec3d VoxelMapper::getInflatedLocalCloud(const Eigen::Vector3d &pos,
-                                             const Eigen::Vector3d &ori,
-                                             const Eigen::Vector3d &dim) {
+vec_Vec3d VoxelMapper::getInflatedLocalCloud(const Eigen::Vector3d& pos,
+                                             const Eigen::Vector3d& ori,
+                                             const Eigen::Vector3d& dim) {
   Eigen::Vector3i dim_low, dim_up;
 
   Eigen::Vector3i dim1 = floatToInt(pos + ori);
@@ -167,6 +204,7 @@ vec_Vec3d VoxelMapper::getInflatedLocalCloud(const Eigen::Vector3d &pos,
   return pts;
 }
 
+// NOT USED
 planning_ros_msgs::VoxelMap VoxelMapper::getMap() {
   planning_ros_msgs::VoxelMap voxel_map;
   voxel_map.origin.x = origin_d_(0);
@@ -184,6 +222,7 @@ planning_ros_msgs::VoxelMap VoxelMapper::getMap() {
     for (n(1) = 0; n(1) < dim_(1); n(1)++) {
       for (n(2) = 0; n(2) < dim_(2); n(2)++) {
         if (map_[n(0)][n(1)][n(2)] > val_even) {
+          // n = 0, 0, 1 dim = 10, 10, 10
           int idx = n(0) + dim_(0) * n(1) + dim_(0) * dim_(1) * n(2);
           voxel_map.data[idx] = val_occ;
         } else if (map_[n(0)][n(1)][n(2)] >= val_free) {
@@ -225,9 +264,10 @@ planning_ros_msgs::VoxelMap VoxelMapper::getInflatedMap() {
   return voxel_map;
 }
 
+// TODO: MOVE THIS FUNCTION
 // crop a local voxel map from the global voxel map
 planning_ros_msgs::VoxelMap VoxelMapper::getInflatedLocalMap(
-    const Eigen::Vector3d &ori_d, const Eigen::Vector3d &dim_d) {
+    const Eigen::Vector3d& ori_d, const Eigen::Vector3d& dim_d) {
   planning_ros_msgs::VoxelMap voxel_map;
 
   voxel_map.resolution = res_;
@@ -280,51 +320,52 @@ planning_ros_msgs::VoxelMap VoxelMapper::getInflatedLocalMap(
   return voxel_map;
 }
 
+// NOT USED
 // TODO(xu): This function is the same as sliceMap function in
 // data_conversions.cpp, should merge them.
-planning_ros_msgs::VoxelMap VoxelMapper::getInflatedOccMap(double h,
-                                                           double hh) {
-  planning_ros_msgs::VoxelMap voxel_map;
-  voxel_map.origin.x = origin_d_(0);
-  voxel_map.origin.y = origin_d_(1);
-  voxel_map.origin.z = 0;
-  voxel_map.dim.x = dim_(0);
-  voxel_map.dim.y = dim_(1);
-  voxel_map.dim.z = 1;
+// planning_ros_msgs::VoxelMap VoxelMapper::getInflatedOccMap(double h,
+//                                                            double hh) {
+//   planning_ros_msgs::VoxelMap voxel_map;
+//   voxel_map.origin.x = origin_d_(0);
+//   voxel_map.origin.y = origin_d_(1);
+//   voxel_map.origin.z = 0;
+//   voxel_map.dim.x = dim_(0);
+//   voxel_map.dim.y = dim_(1);
+//   voxel_map.dim.z = 1;
 
-  voxel_map.resolution = res_;
+//   voxel_map.resolution = res_;
 
-  voxel_map.data.resize(dim_(0) * dim_(1), val_free);
+//   voxel_map.data.resize(dim_(0) * dim_(1), val_free);
 
-  // discretize the thickness into number of voxels
-  int hi = hh / res_;
-  // calculate the starting z-axis value for the slice
-  int h_min = (h - origin_d_(2)) / res_ - hi;
-  h_min = h_min >= 0 ? h_min : 0;
-  h_min = h_min < dim_(2) ? h_min : dim_(2) - 1;
-  int h_max = (h - origin_d_(2)) / res_ + hi + 1;
-  h_max = h_max > 0 ? h_max : 1;
-  h_max = h_max <= dim_(2) ? h_max : dim_(2);
+//   // discretize the thickness into number of voxels
+//   int hi = hh / res_;
+//   // calculate the starting z-axis value for the slice
+//   int h_min = (h - origin_d_(2)) / res_ - hi;
+//   h_min = h_min >= 0 ? h_min : 0;
+//   h_min = h_min < dim_(2) ? h_min : dim_(2) - 1;
+//   int h_max = (h - origin_d_(2)) / res_ + hi + 1;
+//   h_max = h_max > 0 ? h_max : 1;
+//   h_max = h_max <= dim_(2) ? h_max : dim_(2);
 
-  Eigen::Vector3i n;
-  for (n(0) = 0; n(0) < dim_(0); n(0)++) {
-    for (n(1) = 0; n(1) < dim_(1); n(1)++) {
-      for (n(2) = h_min; n(2) < h_max; n(2)++) {
-        if (inflated_map_[n(0)][n(1)][n(2)] > val_even)
-          voxel_map.data[n(0) + dim_(0) * n(1)] = val_occ;
-      }
-    }
-  }
+//   Eigen::Vector3i n;
+//   for (n(0) = 0; n(0) < dim_(0); n(0)++) {
+//     for (n(1) = 0; n(1) < dim_(1); n(1)++) {
+//       for (n(2) = h_min; n(2) < h_max; n(2)++) {
+//         if (inflated_map_[n(0)][n(1)][n(2)] > val_even)
+//           voxel_map.data[n(0) + dim_(0) * n(1)] = val_occ;
+//       }
+//     }
+//   }
 
-  return voxel_map;
-}
+//   return voxel_map;
+// }
 
-bool VoxelMapper::allocate(const Eigen::Vector3d &new_dim_d,
-                           const Eigen::Vector3d &new_ori_d) {
-  Eigen::Vector3i new_dim(new_dim_d(0) / res_, new_dim_d(1) / res_,
-                          new_dim_d(2) / res_);
-  Eigen::Vector3i new_ori(new_ori_d(0) / res_, new_ori_d(1) / res_,
-                          new_ori_d(2) / res_);
+bool VoxelMapper::allocate(const Eigen::Vector3d& new_dim_d,
+                           const Eigen::Vector3d& new_ori_d) {
+  Eigen::Vector3i new_dim(
+      new_dim_d(0) / res_, new_dim_d(1) / res_, new_dim_d(2) / res_);
+  Eigen::Vector3i new_ori(
+      new_ori_d(0) / res_, new_ori_d(1) / res_, new_ori_d(2) / res_);
   if (new_dim(2) == 0)  // 2d case, set the z dimension to be 1
     new_dim(2) = 1;
 
@@ -334,9 +375,9 @@ bool VoxelMapper::allocate(const Eigen::Vector3d &new_dim_d,
     return false;
   else {
     boost::multi_array<int8_t, 3> new_map(
-        boost::extents[new_dim(0)][new_dim(1)][new_dim(2)]);
-    std::fill(new_map.data(), new_map.data() + new_map.num_elements(),
-              val_default);
+        boost::extents[new_dim(0)][new_dim(1)][new_dim(2)], boost::fortran_storage_order());
+    std::fill(
+        new_map.data(), new_map.data() + new_map.num_elements(), val_default);
     for (int l = 0; l < new_dim(0); l++) {
       for (int w = 0; w < new_dim(1); w++) {
         for (int h = 0; h < new_dim(2); h++) {
@@ -368,11 +409,13 @@ bool VoxelMapper::allocate(const Eigen::Vector3d &new_dim_d,
   }
 }
 
-void VoxelMapper::addCloud(const vec_Vec3d &pts, const Eigen::Affine3d &TF,
-                           const vec_Vec3i &ns, bool ray_trace,
+void VoxelMapper::addCloud(const vec_Vec3d& pts,
+                           const Eigen::Affine3d& TF,
+                           const vec_Vec3i& ns,
+                           bool ray_trace,
                            double max_range) {
-  const Eigen::Vector3d pos(TF.translation().x(), TF.translation().y(),
-                            TF.translation().z());
+  const Eigen::Vector3d pos(
+      TF.translation().x(), TF.translation().y(), TF.translation().z());
 
   // Decay cloud which is within a local region around the robot
   if (val_decay > 0) {
@@ -380,7 +423,7 @@ void VoxelMapper::addCloud(const vec_Vec3d &pts, const Eigen::Affine3d &TF,
     decayLocalCloud(pos, max_decay_range);
   }
 
-  for (const auto &it : pts) {
+  for (const auto& it : pts) {
     // through away points outside max_range first to save computation
     if ((max_range > 0) && (it.norm() > max_range)) continue;
 
@@ -397,7 +440,7 @@ void VoxelMapper::addCloud(const vec_Vec3d &pts, const Eigen::Affine3d &TF,
     // for each point do ray trace
     if (ray_trace) {
       vec_Vec3i rays = rayTrace(pos, pt);
-      for (const auto &pn : rays) {
+      for (const auto& pn : rays) {
         if (map_[pn(0)][pn(1)][pn(2)] == val_unknown) {
           map_[pn(0)][pn(1)][pn(2)] = val_free;
           if (inflated_map_[pn(0)][pn(1)][pn(2)] == val_unknown)
@@ -420,7 +463,7 @@ void VoxelMapper::addCloud(const vec_Vec3d &pts, const Eigen::Affine3d &TF,
       }
       // ns is a vector of values from -inflation_range to +inflation_range
       // excluding 0
-      for (const auto &it_n : ns) {
+      for (const auto& it_n : ns) {
         Eigen::Vector3i n2 = n + it_n;
         if (!isOutSide(n2) && inflated_map_[n2(0)][n2(1)][n2(2)] < val_occ) {
           inflated_map_[n2(0)][n2(1)][n2(2)] =
@@ -431,26 +474,27 @@ void VoxelMapper::addCloud(const vec_Vec3d &pts, const Eigen::Affine3d &TF,
   }
 }
 
-void VoxelMapper::freeCloud(const vec_Vec3d &pts, const Eigen::Affine3d &tf) {
-  const Eigen::Vector3d pos(tf.translation().x(), tf.translation().y(),
-                            tf.translation().z());
+// GUI: UNUSED
+// void VoxelMapper::freeCloud(const vec_Vec3d& pts, const Eigen::Affine3d& tf) {
+//   const Eigen::Vector3d pos(
+//       tf.translation().x(), tf.translation().y(), tf.translation().z());
 
-  for (const auto &it : pts) {
-    const Eigen::Vector3d pt = tf * it;
+//   for (const auto& it : pts) {
+//     const Eigen::Vector3d pt = tf * it;
 
-    vec_Vec3i rays = rayTrace(pos, pt);
-    for (const auto &pn : rays) {
-      if (map_[pn(0)][pn(1)][pn(2)] == val_unknown) {
-        map_[pn(0)][pn(1)][pn(2)] = val_free;
-        if (inflated_map_[pn(0)][pn(1)][pn(2)] == val_unknown)
-          inflated_map_[pn(0)][pn(1)][pn(2)] = val_free;
-      }
-    }
-  }
-}
+//     vec_Vec3i rays = rayTrace(pos, pt);
+//     for (const auto& pn : rays) {
+//       if (map_[pn(0)][pn(1)][pn(2)] == val_unknown) {
+//         map_[pn(0)][pn(1)][pn(2)] = val_free;
+//         if (inflated_map_[pn(0)][pn(1)][pn(2)] == val_unknown)
+//           inflated_map_[pn(0)][pn(1)][pn(2)] = val_free;
+//       }
+//     }
+//   }
+// }
 
-vec_Vec3i VoxelMapper::rayTrace(const Eigen::Vector3d &pt1,
-                                const Eigen::Vector3d &pt2) {
+vec_Vec3i VoxelMapper::rayTrace(const Eigen::Vector3d& pt1,
+                                const Eigen::Vector3d& pt2) {
   Eigen::Vector3d diff = pt2 - pt1;
   double k = 0.8;
   int max_diff = (diff / res_).lpNorm<Eigen::Infinity>() / k;
@@ -468,17 +512,17 @@ vec_Vec3i VoxelMapper::rayTrace(const Eigen::Vector3d &pt1,
   return pns;
 }
 
-Eigen::Vector3i VoxelMapper::floatToInt(const Eigen::Vector3d &pt) {
+Eigen::Vector3i VoxelMapper::floatToInt(const Eigen::Vector3d& pt) {
   return Eigen::Vector3i(std::round((pt(0) - origin_d_(0)) / res_),
                          std::round((pt(1) - origin_d_(1)) / res_),
                          std::round((pt(2) - origin_d_(2)) / res_));
 }
 
-Eigen::Vector3d VoxelMapper::intToFloat(const Eigen::Vector3i &pn) {
+Eigen::Vector3d VoxelMapper::intToFloat(const Eigen::Vector3i& pn) {
   return pn.cast<double>() * res_ + origin_d_;
 }
 
-bool VoxelMapper::isOutSide(const Eigen::Vector3i &pn) {
+bool VoxelMapper::isOutSide(const Eigen::Vector3i& pn) {
   return pn(0) < 0 || pn(0) >= dim_(0) || pn(1) < 0 || pn(1) >= dim_(1) ||
          pn(2) < 0 || pn(2) >= dim_(2);
 }
