@@ -351,11 +351,11 @@ void LocalGlobalMapperNode::processCloud_(
             static_cast<double>(timer.elapsed().wall) / 1e6);
 
   // get and publish storage map (this is very slow)
-  if (pub_storage_map_) {
-    makeInflatedMap(storage_voxel_mapper_, storage_map_ros_);
-    storage_map_ros_.header.frame_id = map_frame_;
-    storage_map_pub.publish(storage_map_ros_);
-  }
+  //   if (pub_storage_map_) {
+  //     makeInflatedMap(storage_voxel_mapper_, storage_map_ros_);
+  //     storage_map_ros_.header.frame_id = map_frame_;
+  //     storage_map_pub.publish(storage_map_ros_);
+  //   }
 
   timer.start();
   // crop local voxel map
