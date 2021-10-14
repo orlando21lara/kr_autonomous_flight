@@ -170,7 +170,8 @@ void VoxelMapper::decayLocalCloud(const Eigen::Vector3d& pos,
       for (n(2) = dim_low(2); n(2) < dim_up(2); n(2)++) {
         if (map_[n(0)][n(1)][n(2)] > val_even)
           map_[n(0)][n(1)][n(2)] = map_[n(0)][n(1)][n(2)] - val_decay;
-        if (inflated_map_[n(0)][n(1)][n(2)] > val_even)
+        // checking if current value is larger than val_even, and guaranteeing decaying to non-negative value
+        if ((inflated_map_[n(0)][n(1)][n(2)] > val_even) && (inflated_map_[n(0)][n(1)][n(2)] > val_decay))
           inflated_map_[n(0)][n(1)][n(2)] =
               inflated_map_[n(0)][n(1)][n(2)] - val_decay;
       }
