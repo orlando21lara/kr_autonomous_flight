@@ -4,8 +4,9 @@ project(motion_primitive_library)
 set(CMAKE_CXX_STANDARD 17)
 
 find_package(catkin REQUIRED)
+find_package(fmt REQUIRED)
 find_package(Eigen3 REQUIRED)
-find_package(Boost REQUIRED)
+find_package(Boost REQUIRED COMPONENTS timer)
 
 catkin_package(
   INCLUDE_DIRS include
@@ -27,4 +28,4 @@ add_library(
   src/state_space.cpp
   src/graph_search.cpp)
 target_include_directories(${PROJECT_NAME} PUBLIC include)
-target_link_libraries(${PROJECT_NAME} PUBLIC Eigen3::Eigen Boost::boost)
+target_link_libraries(${PROJECT_NAME} PUBLIC fmt::fmt Eigen3::Eigen Boost::boost Boost::timer)

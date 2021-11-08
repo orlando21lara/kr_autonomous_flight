@@ -1,13 +1,20 @@
 #include "mpl_planner/planner_base.h"
 
+#include <fmt/core.h>
+
 #include <iostream>
+
+// Timer stuff
+#include <boost/timer/timer.hpp>
+using boost::timer::cpu_timer;
+using boost::timer::cpu_times;
 
 namespace MPL {
 
 template <int Dim>
 vec_Vecf<Dim> PlannerBase<Dim>::getOpenSet() const {
   vec_Vecf<Dim> ps;
-  for (const auto &it : ss_ptr_->pq_) {
+  for (const auto& it : ss_ptr_->pq_) {
     ps.push_back(it.second->coord.pos);
   }
   return ps;
@@ -16,7 +23,7 @@ vec_Vecf<Dim> PlannerBase<Dim>::getOpenSet() const {
 template <int Dim>
 vec_Vecf<Dim> PlannerBase<Dim>::getCloseSet() const {
   vec_Vecf<Dim> ps;
-  for (const auto &it : ss_ptr_->hm_) {
+  for (const auto& it : ss_ptr_->hm_) {
     if (it.second && it.second->iterationclosed)
       ps.push_back(it.second->coord.pos);
   }
@@ -117,12 +124,13 @@ void PlannerBase<Dim>::setMaxNum(int num) {
 }
 
 template <int Dim>
-void PlannerBase<Dim>::setU(const vec_E<VecDf> &U) {
+void PlannerBase<Dim>::setU(const vec_E<VecDf>& U) {
   env_->set_u(U);
 }
 
 template <int Dim>
-void PlannerBase<Dim>::setTol(decimal_t tol_pos, decimal_t tol_vel,
+void PlannerBase<Dim>::setTol(decimal_t tol_pos,
+                              decimal_t tol_vel,
                               decimal_t tol_acc) {
   env_->set_tol_pos(tol_pos);
   env_->set_tol_vel(tol_vel);
@@ -135,8 +143,8 @@ void PlannerBase<Dim>::setTol(decimal_t tol_pos, decimal_t tol_vel,
 }
 
 template <int Dim>
-bool PlannerBase<Dim>::plan(const PlannerBase::Coord &start,
-                            const PlannerBase::Coord &goal) {
+bool PlannerBase<Dim>::plan(const PlannerBase::Coord& start,
+                            const PlannerBase::Coord& goal) {
   if (planner_verbose_) {
     start.print("Start:");
     goal.print("Goal:");
@@ -150,6 +158,10 @@ bool PlannerBase<Dim>::plan(const PlannerBase::Coord &start,
   }
 
   GraphSearch<Dim> planner{planner_verbose_};
+
+  // timer stuff
+  static cpu_timer timer;
+  timer.start();
 
   // If use A*, reset the state space
   if (!use_lpastar_) {
@@ -176,6 +188,18 @@ bool PlannerBase<Dim>::plan(const PlannerBase::Coord &start,
   } else {
     traj_cost_ = planner.Astar(start, env_, ss_ptr_, traj_, max_num_);
   }
+
+  // timer stuff
+  // millisecond
+  static std::pair<double, int> cnt{0, 0};
+  double cur_duration = static_cast<double>(timer.elapsed().wall) / 1e6;
+  cnt.first += cur_duration;
+  ++cnt.second;
+  std::cout << fmt ::format(
+      "[local replanner:] A star time: curr: {}, mean: {}, cnt: {}\n",
+      static_cast<float>(cur_duration),
+      static_cast<float>(cnt.first / cnt.second),
+      cnt.second);
 
   if (std::isinf(traj_cost_)) {
     if (planner_verbose_) {

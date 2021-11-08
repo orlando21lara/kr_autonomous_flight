@@ -207,7 +207,7 @@ void GlobalPlanServer::process_all() {
     ROS_WARN("+++++++++++++++++++++++++");
     global_as_->setAborted();
   }
-  printf("Total time for global path planner: %f\n", dt);
+  // printf("Total time for global path planner: %f\n", dt);
 }
 
 void GlobalPlanServer::process_result(bool solved) {

@@ -78,7 +78,7 @@ class RePlanner {
 
   // tf_listener
   tf2_ros::Buffer tfBuffer;
-  tf2_ros::TransformListener *tfListener;
+  tf2_ros::TransformListener* tfListener;
 
   // reference frame names
   std::string map_frame_;   // map frame
@@ -148,18 +148,18 @@ class RePlanner {
    plan_trajectory and RunTrajectory functions
 
    */
-  void EpochCb(const std_msgs::Int64 &msg);
+  void EpochCb(const std_msgs::Int64& msg);
 
   /**
    * @brief Command callback function, setting cmd_pos_ to be the commanded
    * position
    */
-  void CmdCb(const kr_mav_msgs::PositionCommand &cmd);
+  void CmdCb(const kr_mav_msgs::PositionCommand& cmd);
 
   /**
    * @brief map callback, update local_map_ptr_
    */
-  void LocalMapCb(const planning_ros_msgs::VoxelMap::ConstPtr &msg);
+  void LocalMapCb(const planning_ros_msgs::VoxelMap::ConstPtr& msg);
 
   /**
    * @brief Goal callback function
@@ -169,7 +169,7 @@ class RePlanner {
   /**
    * @brief Goal done callback function
    */
-  void GlobalPathCb(const planning_ros_msgs::Path &path);
+  void GlobalPathCb(const planning_ros_msgs::Path& path);
 
   /**
    * @brief Execute the planned trajectory, during which epoch will be published
@@ -191,7 +191,7 @@ class RePlanner {
    * @param d length of the cropped path
    *
    */
-  vec_Vec3f PathCrop(const vec_Vec3f &path);
+  vec_Vec3f PathCrop(const vec_Vec3f& path);
 
   /**
    * @brief Crop global path for local planner with a fixed distance
@@ -199,20 +199,21 @@ class RePlanner {
    * @param d length of the cropped path
    *
    */
-  vec_Vec3f PathCrop(const vec_Vec3f &path, double crop_dist_xyz,
+  vec_Vec3f PathCrop(const vec_Vec3f& path,
+                     double crop_dist_xyz,
                      double crop_dist_z);
 
   /**
    * @brief Check if cropped path reaches the end of original path
    */
-  bool CloseToFinal(const vec_Vec3f &original_path,
-                    const vec_Vec3f &cropped_path,
+  bool CloseToFinal(const vec_Vec3f& original_path,
+                    const vec_Vec3f& cropped_path,
                     double dist_threshold = 10.0);
 
   /**
    * @brief transform global path from odom frame to map frame
    */
-  vec_Vec3f TransformGlobalPath(const vec_Vec3f &path_original);
+  vec_Vec3f TransformGlobalPath(const vec_Vec3f& path_original);
 
   /**
    * @brief transform global path from map frame to odom frame
@@ -229,12 +230,12 @@ class RePlanner {
  * @brief Goal done callback function
  */
 
-void RePlanner::GlobalPathCb(const planning_ros_msgs::Path &path) {
+void RePlanner::GlobalPathCb(const planning_ros_msgs::Path& path) {
   global_path_.clear();
   global_path_ = ros_to_path(path);  // extract the global path information
 }
 
-void RePlanner::EpochCb(const std_msgs::Int64 &msg) {
+void RePlanner::EpochCb(const std_msgs::Int64& msg) {
   if (msg.data < 0) {
     ROS_ERROR("[Replanner:] aborting mission because tracker failed!!!");
     ROS_ERROR("[Replanner:] aborting mission because tracker failed!!!");
@@ -272,7 +273,7 @@ void RePlanner::EpochCb(const std_msgs::Int64 &msg) {
   update_status();
 }
 
-void RePlanner::CmdCb(const kr_mav_msgs::PositionCommand &cmd) {
+void RePlanner::CmdCb(const kr_mav_msgs::PositionCommand& cmd) {
   boost::mutex::scoped_lock lock(mtx_);
   cmd_pos_(0) = cmd.position.x;
   cmd_pos_(1) = cmd.position.y;
@@ -281,7 +282,7 @@ void RePlanner::CmdCb(const kr_mav_msgs::PositionCommand &cmd) {
 }
 
 // map callback, update local_map_
-void RePlanner::LocalMapCb(const planning_ros_msgs::VoxelMap::ConstPtr &msg) {
+void RePlanner::LocalMapCb(const planning_ros_msgs::VoxelMap::ConstPtr& msg) {
   ROS_WARN_ONCE("[Replanner:] Got the local voxel map!");
   local_map_ptr_ = msg;
 }
@@ -566,8 +567,11 @@ bool RePlanner::PlanTrajectory(int horizon) {
                            // current plan epoch (in seconds)
   // make the end of last trajectory consistent with the start of current
   // trajectory
-  fla_state_machine::EvaluateToMsgs(last_traj_, eval_time, &local_tpgoal.p_init,
-                                    &local_tpgoal.v_init, &local_tpgoal.a_init,
+  fla_state_machine::EvaluateToMsgs(last_traj_,
+                                    eval_time,
+                                    &local_tpgoal.p_init,
+                                    &local_tpgoal.v_init,
+                                    &local_tpgoal.a_init,
                                     &local_tpgoal.j_init);
   Vec3f start_pos;
   start_pos = pose_to_eigen(local_tpgoal.p_init);
@@ -621,7 +625,9 @@ bool RePlanner::PlanTrajectory(int horizon) {
   local_tpgoal.p_final.position.y = local_goal(1);
   local_tpgoal.p_final.position.z = local_goal(2);
 
+  // timer stuff
   timer.start();
+
   // send goal to local trajectory plan action server
   local_plan_client_->sendGoal(local_tpgoal);
 
@@ -630,13 +636,19 @@ bool RePlanner::PlanTrajectory(int horizon) {
       local_plan_client_->waitForResult(ros::Duration(local_timeout_duration_));
 
   // timer stuff
-  sensor_msgs::Temperature tmsg2;
-  tmsg2.header.stamp = ros::Time::now();
-  tmsg2.header.frame_id = map_frame_;
+  sensor_msgs::Temperature tmsg;
+  tmsg.header.stamp = ros::Time::now();
+  tmsg.header.frame_id = map_frame_;
   // millisecond
-  tmsg2.temperature = static_cast<double>(timer.elapsed().wall) / 1e6;
-  // ROS_WARN("[local_planner_time]: %f", tmsg2.temperature);
-  // time_pub2.publish(tmsg2);
+  static std::pair<double, int> cnt{0, 0};
+  tmsg.temperature = static_cast<double>(timer.elapsed().wall) / 1e6;
+  cnt.first += tmsg.temperature;
+  ++cnt.second;
+  ROS_WARN("total_local_planner_time curr: %f, mean: %f, cnt: %d",
+           tmsg.temperature,
+           cnt.first / cnt.second,
+           cnt.second);
+  time_pub2.publish(tmsg);
 
   // check result of local plan
   bool local_succeeded = true;
@@ -709,7 +721,8 @@ void RePlanner::update_status() {
 
     // evaluate traj at 1.0/local_replan_rate_, output recorded to pos_finaln,
     // refer to msg_traj.cpp.
-    last_traj_->evaluate(1.0 / local_replan_rate_, 0,
+    last_traj_->evaluate(1.0 / local_replan_rate_,
+                         0,
                          pos_finaln);  // TODO(mike) {fix this}.
 
     pos_final = fla_state_machine::Make4d(pos_finaln);
@@ -786,7 +799,7 @@ void RePlanner::update_status() {
   }
 }
 
-vec_Vec3f RePlanner::PathCrop(const vec_Vec3f &path) {
+vec_Vec3f RePlanner::PathCrop(const vec_Vec3f& path) {
   if (path.size() < 2) {
     ROS_WARN("[Replanner:] global path has <= 1 waypoints. Check!");
     // return empty
@@ -849,16 +862,17 @@ vec_Vec3f RePlanner::PathCrop(const vec_Vec3f &path) {
   return cropped_path;
 }
 
-vec_Vec3f RePlanner::TransformGlobalPath(const vec_Vec3f &path_original) {
+vec_Vec3f RePlanner::TransformGlobalPath(const vec_Vec3f& path_original) {
   // get the latest tf from map to odom reference frames
   geometry_msgs::TransformStamped transformStamped;
 
   try {
     transformStamped = tfBuffer.lookupTransform(
         map_frame_, odom_frame_, ros::Time(0), ros::Duration(0.01));
-  } catch (tf2::TransformException &ex) {
+  } catch (tf2::TransformException& ex) {
     ROS_ERROR("[Replanner:] Failed to get tf from %s to %s",
-              odom_frame_.c_str(), map_frame_.c_str());
+              odom_frame_.c_str(),
+              map_frame_.c_str());
     // AbortReplan(); // no need to abort plan since this is just for
     // visualization return original path
     return path_original;
@@ -898,8 +912,9 @@ void RePlanner::TransformGlobalGoal() {
     // TF transform from odom frame to the map frame
     transformStamped = tfBuffer.lookupTransform(
         odom_frame_, map_frame_, ros::Time(0), ros::Duration(0.01));
-  } catch (tf2::TransformException &ex) {
-    ROS_ERROR("[Replanner:] Failed to get tf from %s to %s", map_frame_.c_str(),
+  } catch (tf2::TransformException& ex) {
+    ROS_ERROR("[Replanner:] Failed to get tf from %s to %s",
+              map_frame_.c_str(),
               odom_frame_.c_str());
     AbortReplan();
   }
@@ -915,7 +930,8 @@ void RePlanner::TransformGlobalGoal() {
       "same to guaranteed it's still within the voxel map");
 }
 
-vec_Vec3f RePlanner::PathCrop(const vec_Vec3f &path, double crop_dist_xyz,
+vec_Vec3f RePlanner::PathCrop(const vec_Vec3f& path,
+                              double crop_dist_xyz,
                               double crop_dist_z) {
   // return nonempty
   // precondition
@@ -970,8 +986,8 @@ vec_Vec3f RePlanner::PathCrop(const vec_Vec3f &path, double crop_dist_xyz,
   return cropped_path;
 }
 
-bool RePlanner::CloseToFinal(const vec_Vec3f &original_path,
-                             const vec_Vec3f &cropped_path,
+bool RePlanner::CloseToFinal(const vec_Vec3f& original_path,
+                             const vec_Vec3f& cropped_path,
                              double dist_threshold) {
   // precondition: original_path and cropped_path are non-empty
   if (original_path.size() < 2 || cropped_path.size() < 2) {
@@ -1069,7 +1085,7 @@ RePlanner::RePlanner() : nh_("~") {
   replan_server_->start();
 }
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
   ros::init(argc, argv, "replanner");
   ros::NodeHandle nh;
   RePlanner replanner;
