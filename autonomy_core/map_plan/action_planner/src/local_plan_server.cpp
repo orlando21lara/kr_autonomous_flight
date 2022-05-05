@@ -384,11 +384,7 @@ planning_ros_msgs::VoxelMap LocalPlanServer::clear_map_position(
   // maintain both original and cleared maps
   planning_ros_msgs::VoxelMap local_map_cleared;
   local_map_cleared = local_map_original;
-
-  planning_ros_msgs::VoxelMap voxel_map;
-  
-  // Replaced with corresponding parameter value from VoxelMsg.msg
-  int8_t val_free = voxel_map.val_free;
+  int8_t val_free = 0;
   ROS_WARN_ONCE("Value free is set as %d", val_free);
   double robot_r = 1.0;
   int robot_r_n = std::ceil(robot_r / local_map_cleared.resolution);
