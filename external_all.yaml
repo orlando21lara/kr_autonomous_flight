@@ -7,13 +7,13 @@ repositories:
 
   kr_mav_control:
     type: git
-    url: http://github.com/KumarRobotics/kr_mav_control.git
-    version: master
+    url: git@github.com:orlando21lara/kr_mav_control.git
+    version: add_mpc_control
 
   mrsl_quadrotor:
     type: git
-    url: http://github.com/KumarRobotics/mrsl_quadrotor.git
-    version: master
+    url: git@github.com:orlando21lara/mrsl_quadrotor.git
+    version: add_setup_for_mpc_controller
 
   ouster_example:
     type: git
@@ -23,4 +23,40 @@ repositories:
   waypoint_navigation_plugin:
     type: git
     url: https://github.com/KumarRobotics/waypoint_navigation_plugin.git
+    version: master
+
+# Dependencies for UZH MPC Controller
+  uzh_mpc_controller/rpg_mpc:
+    type: git
+    url: git@github.com:uzh-rpg/rpg_mpc.git
+    version: master
+
+  uzh_mpc_controller/rpg_quadrotor_control:
+    type: git
+    url: git@github.com:uzh-rpg/rpg_quadrotor_control.git
+    version: master
+
+  uzh_mpc_controller/catkin_simple:
+    type: git
+    url: git@github.com:catkin/catkin_simple.git
+    version: master
+
+  uzh_mpc_controller/eigen_catkin:
+    type: git
+    url: git@github.com:ethz-asl/eigen_catkin.git
+    version: master
+
+  uzh_mpc_controller/mav_comm:
+    type: git
+    url: git@github.com:ethz-asl/mav_comm.git
+    version: master
+
+  uzh_mpc_controller/rotors_simulator:
+    type: git
+    url: git@github.com:ethz-asl/rotors_simulator.git
+    version: master
+
+  uzh_mpc_controller/rpg_quadrotor_common:
+    type: git
+    url: git@github.com:uzh-rpg/rpg_quadrotor_common.git
     version: master
